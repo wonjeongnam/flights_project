@@ -1,0 +1,901 @@
+---
+title: '`뉴욕 비행장` <br> 데이터 분석'
+title-slide-attributes: 
+    data-background-image: airport.jpg
+    data-background-size: cover
+    data-background-opacity: '0.3'  
+author: '8조 구교빈, 김예원, 김윤희, 남원정'
+subtitle: '항공사별 지연 데이터 분석' 
+format: 
+    revealjs:
+        theme: default
+        slide-number: true
+        toc: true
+        toc-title: "목차"
+        transition: fade
+        footer: '8조'
+
+css: style.css  # 커스텀 CSS 추가
+---
+
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from nycflights13 import flights,planes
+
+```
+
+## 변수명 소개 {.scrollable}
+
+::::: columns
+::: {.column width="50%"}
+| 컬럼 명        | 설명                                   |
+|----------------|----------------------------------------|
+| year           | 2013년도                               |
+| month          | 월                                     |
+| day            | 일                                     |
+| dep_time       | 실제 출발 시간                         |
+| sched_dep_time | 예정된 출발 시간                       |
+| dep_delay      | 출발 지연 시간(분 단위)                |
+| arr_time       | 실제 도착 시간                         |
+| sched_arr_time | 예정된 도착 시간                       |
+| arr_delay      | 도착 지연 시간(분 단위)                |
+| carrier        | 항공사 코드                            |
+| flight         | 항공편 번호                            |
+| tailnum        | 항공기 등록 번호                       |
+| origin         | 출발 공항 코드                         |
+| dest           | 도착 공항 코드                         |
+| air_time       | 비행 시간(분 단위)                     |
+| distance       | 비행 거리(마일 단위)                   |
+| hour           | 출발 예정 시간(시간 단위)              |
+| minute         | 출발 예정 시간(분 단위)                |
+| time_hour      | 출발 예정 시간(POSIXct 날짜/시간 형식) |
+
+: flights
+:::
+
+::: {.column width="50%"}
+| 컬럼 명      | 설명             |
+|--------------|------------------|
+| tailnum      | 항공기 등록 번호 |
+| year         | 제작 연도        |
+| type         | 항공기 종류      |
+| manufacturer | 제조사           |
+| model        | 항공기 모델      |
+| engines      | 엔진 개수        |
+| seats        | 좌석 수          |
+| speed        | 순항 속도        |
+| engine       | 엔진 타입        |
+
+: planes
+:::
+:::::
+
+##  데이터 전처리
+
+### 1) 결측치 확인 {.scrollable}
+
+::::: columns
+::: {.column width="50%"}
+-   flights
+
+```{python}
+print(flights.isna().sum())
+```
+:::
+
+::: {.column width="50%"}
+-   planes
+
+```{python}
+print(planes.isna().sum())
+```
+:::
+:::::
+
+------------------------------------------------------------------------
+
+### 2) 결측치 제거 {.scrollable}
+
+```         
+- speed 열 삭제
+- dropna로 각 데이터 프레임 결측치 제거
+```
+
+```{python}
+#| echo : true
+del planes['speed']
+
+#flights 결측치 전부 제거 
+f = flights.dropna()
+print(f.isna().sum())
+
+```
+
+```{python}
+#planes 결측치 제거 
+p = planes.dropna()
+print(p.isna().sum())
+```
+
+------------------------------------------------------------------------
+
+### 3) 병합 / 중복열 삭제/ 변수명 변경 {.scrollable}
+
+```{python}
+#merge 및 중복열 삭제, 변수명 변경
+df =pd.merge(f,p,on='tailnum',how='inner')
+df.isna().sum()
+df = df.drop(columns=['sched_dep_time','time_hour'])
+df = df.rename(columns = {'year_x':'year','year_y':'man_year','hour':'sched_dep_hour','minute':'sched_dep_minute'})
+print(df.head())
+```
+
+------------------------------------------------------------------------
+
+### 4-1) 데이터 현황 분석 {.scrollable}
+
+-   info/describe()
+
+```{python}
+df.info()
+```
+
+------------------------------------------------------------------------
+
+### 4-2)데이터 현황 분석 {.scrollable}
+
+```{python}
+df[['dep_delay','arr_delay','air_time','distance']].describe().round(2)
+```
+
+------------------------------------------------------------------------
+
+### 출발 지연 선택 이유
+
+<br>
+
+<br>
+
+::: incremental
+- 출발 지연은 도착 지연의 선행 요인이 될 수 있기에 연쇄 지연을 예방할 수 있다.
+- 소비자 입장에서 출발 지연 정도는 항공편 선택에 있어 중요한 기준이 된다
+:::
+
+# 데이터 후처리
+
+------------------------------------------------------------------------
+
+### 출발 지연이 된 항공편 수 시각화
+
+```{python}
+# 출발 지연 시간 분포
+plt.figure(figsize=(12, 6))
+sns.histplot(df["dep_delay"], bins=50, kde=True, color="blue")
+plt.title("dep_delay_distribution")
+plt.xlabel("dep_delay_minute")
+plt.ylabel("operate_count")
+plt.xlim(-10, 300)  # 극단적인 이상치는 제외하고 가시성 높이기
+plt.grid()
+plt.show()
+```
+
+------------------------------------------------------------------------
+
+### 요일별/월별/항공사별 평균 지연시간 시각화
+
+-요일별
+
+```{python}
+df['date'] = pd.to_datetime(df[['year', 'month', 'day']])
+df['day_of_week'] = df['date'].dt.dayofweek
+
+# 요일별 평균 출발 지연시간 계산
+weekday_delays = df.groupby('day_of_week')['dep_delay'].mean().reset_index()
+
+
+# 요일 이름 매핑
+weekday_labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+weekday_delays['day_of_week'] = weekday_delays['day_of_week'].map(lambda x: weekday_labels[x])
+
+```
+
+```{python}
+# 시각화
+plt.figure(figsize=(10, 5))
+plt.bar(weekday_delays['day_of_week'], weekday_delays['dep_delay'], color='skyblue', alpha=0.8)
+plt.xlabel('Day of the Week')
+plt.ylabel('Average Departure Delay (minutes)')
+plt.title('Average Departure Delay by Day of the Week')
+plt.xticks(rotation=45)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+```
+
+------------------------------------------------------------------------
+
+-월별
+
+```{python}
+mean_month=df.groupby("month")["dep_delay"].mean().reset_index()
+
+plt.figure(figsize=(10, 5))
+plt.bar(mean_month['month'], mean_month['dep_delay'], color='skyblue', alpha=0.8)
+plt.xlabel('month')
+plt.ylabel('Average Departure Delay (minutes)')
+plt.title('Average Departure Delay by month')
+plt.xticks(ticks=range(1, 13), labels=range(1, 13))
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+```
+
+------------------------------------------------------------------------
+
+## 그래프
+
+::: panel-tabset
+### 항공사별 평균 출발 지연 시간 그래프
+
+```{python}
+carrier_mean = df.groupby('carrier')['dep_delay'].mean().reset_index().sort_values('dep_delay',ascending=False)
+df.groupby('carrier')['dep_delay'].median().sort_values(ascending=False)
+plt.figure(figsize=(10, 5))
+plt.bar(carrier_mean['carrier'], carrier_mean['dep_delay'], color='skyblue', alpha=0.8)
+plt.xlabel('carrier')
+plt.ylabel('Average Departure Delay (minutes)')
+plt.title('Average Departure Delay by carrier')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+```
+
+### 평균 출발 지연이 가장 높은 항공사 2개
+
+```{python}
+# 평균 지연 시간 계산
+carrier_mean = df.groupby('carrier')['dep_delay'].mean().reset_index().sort_values('dep_delay', ascending=False)
+
+# 강조할 항공사
+highlight = ['F9', 'EV']
+
+# 색상 설정 (강조할 항공사만 파란색, 나머지는 회색)
+colors = ['blue' if carrier in highlight else 'lightgray' for carrier in carrier_mean['carrier']]
+
+# 그래프 그리기
+plt.figure(figsize=(10, 5))
+plt.bar(carrier_mean['carrier'], carrier_mean['dep_delay'], color=colors, alpha=0.8)
+plt.xlabel('Carrier')
+plt.ylabel('Average Departure Delay (minutes)')
+plt.title('Average Departure Delay by Carrier')
+
+# 강조한 막대에 라벨 추가
+for i, carrier in enumerate(carrier_mean['carrier']):
+    if carrier in highlight:
+        plt.text(i, carrier_mean['dep_delay'].iloc[i] + 0.5, f"{carrier_mean['dep_delay'].iloc[i]:.1f}", 
+                 ha='center', fontsize=12, fontweight='bold')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+```
+:::
+
+------------------------------------------------------------------------
+
+### 비교예시
+
+<br>
+
+<br>
+
+| 항공사 | 총 비행 횟수 | 지연된 비행 횟수 | 평균 지연 시간(분) | 지연 비율(%) |
+|--------|--------------|------------------|--------------------|--------------|
+| A      | <mark>1,500</mark>   | 500              | 20                 | 33.3%        |
+| B      | <mark>800</mark>    | 500              | 20                 | 62.5%        |
+
+---
+
+### min-max-scaler
+
+- 데이터의 값 범위를 특정 구간(0~1 사이)으로 변환하는 정규화 기법
+
+$$
+X_{\text{scaled}} = \frac{X - X_{\text{min}}}{X_{\text{max}} - X_{\text{min}}}
+$$
+
+
+
+# 본론
+---
+
+## 가중치 이용 {.scrollable}
+
+### 가중치 비중 기준은 3시간
+
+- `3시간 기준 선정 이유!`
+![](ppt_hour_3.png){width="80%"}
+    ![Quarto 공식 사이트](https://www.seattlen.com/hot/38077?sfl=mb_id&page=853)
+    - 2024년 4월 미 교통부는 미국 국내선 기준으로 비행 시간 3시간 이상 지연되면 즉시 환불을 요청할 수 있도록 환불 규정을 통일시킴.
+    
+
+- `3시간 이상` 기준으로 평균과 비율에 `7:3`, `3시간 미만`인 경우 `5:5` 각각 다르게 가중치를 부여
+
+- 비율과 평균의 범위가 다르기 때문에 동일한 범위를 적용하고자 `Min-Max scaler`를 적용하여 `표준화`를 진행
+
+- 가중치로 계산된 최종 값으로 항공사별 지연 심각도 비교
+
+----
+
+## 분석 내용
+
+### 가중치를 적용하는 방법 {.scrollable}
+
+* step 1) 3시간 기준으로 데이터 필터링 진행
+    - 각 항공사별 전체 지연 횟수와 3시간 이상 지연 횟수.
+
+
+``` {.python code-line-numbers="|3|6|9|12"}
+#| echo: True
+### 3시간 이상 지연된 항공사들 데이터 필터링
+delay_over_180 = df.loc[df['dep_delay'] >= 180]
+
+# 각 항공사별 전체 지연 횟수 
+df_count = df['carrier'].value_counts().reset_index()
+
+# 각 항공사별 180분 이상 지연 횟수
+delay_over_180_count = delay_over_180['carrier'].value_counts().reset_index()
+
+### 항공사를 중심으로 데이터 병합
+delay_over_180_count_merge = pd.merge(delay_over_180_count,df_count,on='carrier',how='outer')
+```
+
+```{python}
+#| echo: false
+### 3시간 이상 지연된 항공사들 데이터 필터링
+delay_over_180 = df.loc[df['dep_delay'] >= 180]
+
+# 각 항공사별 전체 지연 횟수 
+df_count = df['carrier'].value_counts().reset_index()
+
+# 각 항공사별 180분 이상 지연 횟수
+delay_over_180_count = delay_over_180['carrier'].value_counts().reset_index()
+
+### 항공사를 중심으로 데이터 병합
+delay_over_180_count_merge = pd.merge(delay_over_180_count,df_count,on='carrier',how='outer')
+```
+
+---
+
+* step 2) 각 항공사의 지연 시간 빈도수 계산
+    - 비율(ratio) = 각 항공사 출발 지연 시간 횟수 / 전체 빈도 수 
+    - 3시간 기준으로 이상 이하를 나눠서 진행
+        -> over_180_df 와 under_180_df
+
+        
+```{.python code-line-numbers="|3|5|8|9|11|14"}
+#| echo: True
+### 각 항공사의 지연 시간 전체 비율 
+delay_over_180_ratio = pd.DataFrame((delay_over_180_count_merge.iloc[:,1] / delay_over_180_count_merge.iloc[:,2]).sort_index(ascending=True))
+
+ratio_over_180 = pd.concat([delay_over_180_count_merge,delay_over_180_ratio],axis=1)
+
+# 컬럼명 변경
+ratio_over_180 = ratio_over_180.rename(columns = {'count_x':'dep_delay_count','count_y': 'total_count',0:'ratio'})
+ratio_over_180.sort_values('ratio',ascending=False)
+
+over_180_df = pd.merge(ratio_over_180,delay_over_180.groupby('carrier')['dep_delay'].mean(),on='carrier',how='outer')
+
+# NaN값은 0으로 대체.
+over_180_df = over_180_df.fillna(0)
+```
+
+
+```{python}
+#| echo: False
+### 각 항공사의 지연 시간 전체 비율 
+delay_over_180_ratio = pd.DataFrame((delay_over_180_count_merge.iloc[:,1] / delay_over_180_count_merge.iloc[:,2]).sort_index(ascending=True))
+
+ratio_over_180 = pd.concat([delay_over_180_count_merge,delay_over_180_ratio],axis=1)
+
+# 컬럼명 변경
+ratio_over_180 = ratio_over_180.rename(columns = {'count_x':'dep_delay_count','count_y': 'total_count',0:'ratio'})
+ratio_over_180.sort_values('ratio',ascending=False)
+
+over_180_df = pd.merge(ratio_over_180,delay_over_180.groupby('carrier')['dep_delay'].mean(),on='carrier',how='outer')
+
+# NaN값은 0으로 대체.
+over_180_df = over_180_df.fillna(0)
+
+```
+
+---
+
+```{python}
+print(over_180_df)
+```
+
+---         
+
+
+- 이와 같은 과정을 3시간 이하 지연된 데이터 동일 진행.
+
+```{.python code-line-numbers="|3|5|8|11|12|15|16|18|20"}
+#| echo: True
+### 3시간 이하 지연된 항공사들 데이터 필터링
+delay_under_180 = df.loc[(df['dep_delay'] > 0) & (df['dep_delay'] <180)]
+# 각 항공사별 전체 지연 횟수
+delay_under_180_count = delay_under_180['carrier'].value_counts().reset_index()
+
+### 항공사를 중심으로 데이터 병합
+delay_under_180_count_merge = pd.merge(delay_under_180_count,df_count,on='carrier',how='outer')
+
+### 각 항공사의 지연 시간 전체 비율 
+delay_under_180_ratio = pd.DataFrame((delay_under_180_count_merge.iloc[:,1] / delay_under_180_count_merge.iloc[:,2]).sort_index(ascending=True))
+ratio_under_180 = pd.concat([delay_under_180_count_merge,delay_under_180_ratio],axis=1)
+
+# 컬럼명 변경
+ratio_under_180 = ratio_under_180.rename(columns = {'count_x':'dep_delay_count','count_y': 'total_count',0:'ratio'})
+ratio_under_180.sort_values('ratio',ascending=False)
+
+under_180_df = pd.merge(ratio_under_180,delay_under_180.groupby('carrier')['dep_delay'].mean(),on='carrier',how='outer')
+
+print(under_180_df)
+```
+
+
+
+```{python}
+#| echo: False
+### 3시간 이하 지연된 항공사들 데이터 필터링
+delay_under_180 = df.loc[(df['dep_delay'] > 0) & (df['dep_delay'] <180)]
+# 각 항공사별 전체 지연 횟수
+delay_under_180_count = delay_under_180['carrier'].value_counts().reset_index()
+
+### 항공사를 중심으로 데이터 병합
+delay_under_180_count_merge = pd.merge(delay_under_180_count,df_count,on='carrier',how='outer')
+
+### 각 항공사의 지연 시간 전체 비율 
+delay_under_180_ratio = pd.DataFrame((delay_under_180_count_merge.iloc[:,1] / delay_under_180_count_merge.iloc[:,2]).sort_index(ascending=True))
+ratio_under_180 = pd.concat([delay_under_180_count_merge,delay_under_180_ratio],axis=1)
+
+# 컬럼명 변경
+ratio_under_180 = ratio_under_180.rename(columns = {'count_x':'dep_delay_count','count_y': 'total_count',0:'ratio'})
+ratio_under_180.sort_values('ratio',ascending=False)
+
+under_180_df = pd.merge(ratio_under_180,delay_under_180.groupby('carrier')['dep_delay'].mean(),on='carrier',how='outer')
+
+```
+
+---
+
+```{python}
+print(under_180_df)
+```
+
+---
+
+* step 3) 가중치 부여하기
+    - step 2에서 필터링 진행한 데이터들에 가중치 부여
+    - ratio와 minmax_ratio의 Min_Max를 찾아 표준화 진행
+
+    
+```{.python code-line-numbers="|4|5|6|10|12|14|15"}
+#| echo: True
+
+### step 2에서 필터링 진행한 데이터들 병합
+merged_df = pd.concat([over_180_df,under_180_df], axis=0).reset_index(drop=True)
+merged_df['minmax_ratio'] = (merged_df['ratio'] - merged_df['ratio'].min()) / (merged_df['ratio'].max() - merged_df['ratio'].min())
+merged_df['minmax_dep_delay'] = (merged_df['dep_delay'] - merged_df['dep_delay'].min()) / (merged_df['dep_delay'].max() - merged_df['dep_delay'].min())
+
+### ratio와 minmax_ratio의 Min_Max를 찾아 표준화 진행
+#전체 ratio 중에서 가장 큰 값/작은값은 0
+over_180_df['minmax_ratio'] = (over_180_df['ratio'])/0.524012 
+#전체 dep_delay중에서 가장 큰 값/작은값은 0
+over_180_df['minmax_dep_delay'] = (over_180_df['dep_delay'])/743.5  
+
+under_180_df['minmax_ratio'] = (under_180_df['ratio'])/0.524012
+under_180_df['minmax_dep_delay'] = (under_180_df['dep_delay'])/743.5
+
+```
+
+```{python}
+#| echo: False
+
+### step 2에서 필터링 진행한 데이터들 병합
+merged_df = pd.concat([over_180_df,under_180_df], axis=0).reset_index(drop=True)
+merged_df['minmax_ratio'] = (merged_df['ratio'] - merged_df['ratio'].min()) / (merged_df['ratio'].max() - merged_df['ratio'].min())
+merged_df['minmax_dep_delay'] = (merged_df['dep_delay'] - merged_df['dep_delay'].min()) / (merged_df['dep_delay'].max() - merged_df['dep_delay'].min())
+
+### ratio와 minmax_ratio의 Min_Max를 찾아 표준화 진행
+#전체 ratio 중에서 가장 큰 값/작은값은 0
+over_180_df['minmax_ratio'] = (over_180_df['ratio'])/0.524012 
+#전체 dep_delay중에서 가장 큰 값/작은값은 0
+over_180_df['minmax_dep_delay'] = (over_180_df['dep_delay'])/743.5  
+
+under_180_df['minmax_ratio'] = (under_180_df['ratio'])/0.524012
+under_180_df['minmax_dep_delay'] = (under_180_df['dep_delay'])/743.5
+
+```
+
+---
+
+- `3시간 이상인 데이터`는 `ratio : minmax_dep_delay = 3:7` 비율로 적용
+- `3시간 이하인 데이터`는 `ratio : minmax_dep_delay = 5:5` 비율로 적용
+
+```{.python code-line-numbers="|3|6"}
+#| echo: True
+
+weight_total_score = ((over_180_df['minmax_ratio'] * 0.3 + over_180_df['minmax_dep_delay'] * 0.7) + (under_180_df['minmax_ratio'] * 0.5 + under_180_df['minmax_dep_delay'] * 0.5))
+
+### 가중치를 적용한 최종 데이터
+weight_total_score_df = pd.concat([over_180_df['carrier'], weight_total_score], axis=1).sort_values(0,ascending=False)
+```
+
+```{python}
+#| echo: false
+
+weight_total_score = ((over_180_df['minmax_ratio'] * 0.3 + over_180_df['minmax_dep_delay'] * 0.7) + (under_180_df['minmax_ratio'] * 0.5 + under_180_df['minmax_dep_delay'] * 0.5))
+
+### 가중치를 적용한 최종 데이터
+weight_total_score_df = pd.concat([over_180_df['carrier'], weight_total_score], axis=1).sort_values(0,ascending=False)
+
+print(weight_total_score_df)
+```
+
+------------------------------------------------------------------------
+
+### 최종 순위
+
+| 순위 | 출발 지연 시간 평균 비교 | 가중치를 적용한 비교 |
+|:----:|:------------------------:|:--------------------:|
+| 1위  |            `F9 `           |          `HA`          |
+| 2위  |            EV            |          `FL`          |
+| 3위  |            YV            |          WN          |
+| 4위  |            `FL`            |          `F9  `        |
+
+------------------------------------------------------------------------
+
+## top4 특징 설명
+
+### 거리와 출발지연시간의 산점도 {.scrollable}
+
+```{python}
+
+#| echo: false
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=df, x='distance', y='dep_delay', alpha=0.5)
+plt.title("distance vs. dep_delay")
+plt.xlabel("distance (mile)")
+plt.ylabel("dep_delay (minute)")
+plt.grid()
+plt.show()
+
+```
+
+---
+
+```{python}
+#| echo: false
+
+plt.figure(figsize=(10, 6))
+top_4_carriers = ['HA', 'FL', 'WN', 'F9']
+df_top_4 = df[df['carrier'].isin(top_4_carriers)]  # 상위 4개 항공사 데이터만 필터링
+
+sns.scatterplot(data=df_top_4, x='distance', y='dep_delay', hue='carrier', alpha=0.5, palette='tab10')
+
+plt.title("distance vs. dep_delay (carrier)")
+plt.xlabel("distance (mile)")
+plt.ylabel("dep_delay (minute)")
+plt.legend(title="carrier")
+plt.grid()
+plt.show()
+```
+
+------------------------------------------------------------------------
+
+### 월별/요일별 {.scrollable}
+
+- 월별 'HA', 'FL', 'WN', 'F9'의 출발 지연 횟수
+
+```{python}
+#| fig.show='hold'
+# 특정 항공사 리스트
+selected_carriers = ['HA', 'FL', 'WN', 'F9']
+
+# 선택된 항공사만 필터링하여 월별 출발 지연 횟수 계산
+carrier_monthly_counts = df[(df['carrier'].isin(selected_carriers)) & (df['dep_delay'] > 0)] \
+    .groupby(['month', 'carrier'])['dep_delay'].count().unstack()
+
+
+
+# Seaborn 그룹화된 막대그래프
+plt.figure(figsize=(10, 5))
+carrier_monthly_counts.plot(kind='bar', figsize=(10, 5), colormap='tab10', edgecolor='black')
+
+# 그래프 설정
+plt.xlabel("Month")
+plt.ylabel("Count of Delays")
+plt.title("Monthly Delay Counts for Selected Carriers (HA, FL, WN, F9)")
+plt.xticks(rotation=0)  # X축 레이블 가독성 유지
+plt.legend(title="Carrier")
+
+# 그래프 출력
+plt.show()
+
+```
+
+---
+
+- 요일별 'HA', 'FL', 'WN', 'F9'의 출발 지연 횟수
+
+```{python}
+#| echo: false
+# 특정 항공사 리스트
+selected_carriers = ['HA', 'FL', 'WN', 'F9']
+
+# 선택된 항공사만 필터링하여 요일별 출발 지연 횟수 계산
+carrier_day_of_week_counts = df[(df['carrier'].isin(selected_carriers)) & (df['dep_delay'] > 0)] \
+    .groupby(['day_of_week', 'carrier'])['dep_delay'].count().unstack()
+
+
+# Seaborn 그룹화된 막대그래프
+plt.figure(figsize=(10, 5))
+carrier_day_of_week_counts.plot(kind='bar', figsize=(10, 5), colormap='tab10', edgecolor='black')
+
+# 그래프 설정
+plt.xlabel("Month")
+plt.ylabel("Count of Delays")
+plt.title("Monthly Delay Counts for Selected Carriers (HA, FL, WN, F9)")
+plt.xticks(rotation=0)  # X축 레이블 가독성 유지
+plt.legend(title="Carrier")
+
+# 그래프 출력
+plt.show()
+```
+
+# 결론
+
+## 단순평균이랑 가중치랑 시각화 (표) {.scrollable}
+
+출발 지연 시간의 평균을 가지고 메긴 순위와 가중치를 적용해 순위를 메긴 결과 <br>
+TOP4 항공사<br>
+평균    :   F9, FL, <span style="color:red;">EV</span>, <span style="color:red;">YV</span><br>
+
+가중치  :   F9, FL, <span style="color:red;">HA</span>, <span style="color:red;">WN</span>
+
+
+
+
+```{python}
+weight_total_score_df['rank'] = weight_total_score_df[0].rank(ascending=False, method='dense')
+
+# 항공사별 평균 지연 시간 계산
+carrier_avg_delay = df.groupby('carrier')['dep_delay'].mean().reset_index()
+carrier_avg_delay.columns = ['carrier', 'avg_dep_delay']
+carrier_avg_delay['rank'] = carrier_avg_delay['avg_dep_delay'].rank(ascending=False, method='dense')
+
+# 두 개의 순위를 비교하는 데이터프레임 생성
+ranking_comparison = pd.merge(carrier_avg_delay[['carrier', 'rank']], 
+                              weight_total_score_df[['carrier', 'rank']], 
+                              on='carrier', 
+                              suffixes=('_avg', '_weighted'))
+
+# 순위 반전: 1이 가장 위로 오도록 조정
+max_rank_avg = ranking_comparison['rank_avg'].max()
+max_rank_weighted = ranking_comparison['rank_weighted'].max()
+
+ranking_comparison['rank_avg_reversed'] = max_rank_avg - ranking_comparison['rank_avg'] + 1
+ranking_comparison['rank_weighted_reversed'] = max_rank_weighted - ranking_comparison['rank_weighted'] + 1
+
+# 상위 4개 항공사 선정
+top_n = 4
+top_avg_carriers = ranking_comparison.nsmallest(top_n, 'rank_avg')['carrier'].tolist()
+top_weighted_carriers = ranking_comparison.nsmallest(top_n, 'rank_weighted')['carrier'].tolist()
+
+plt.figure(figsize=(12, 6))
+
+# 막대그래프: 상위 4개 항공사는 빨간색, 나머지는 초록색
+colors = ['gold' if carrier in top_avg_carriers else 'gray' for carrier in ranking_comparison['carrier']]
+plt.bar(ranking_comparison['carrier'], ranking_comparison['rank_avg_reversed'], 
+        color=colors, label='Avg Delay Rank')
+
+# 점선 그래프: 기존 그래프 형태 유지, Top 4는 빨간색으로 하이라이트
+plt.plot(ranking_comparison['carrier'], ranking_comparison['rank_weighted_reversed'], 
+         marker='s', linestyle='--', color='royalblue', label='Weighted Score Rank')
+
+# 개별 점 하이라이트 (Top 4 항공사는 빨간색 점선)
+for i, carrier in enumerate(ranking_comparison['carrier']):
+    if carrier in top_weighted_carriers:
+        plt.plot(carrier, ranking_comparison.loc[i, 'rank_weighted_reversed'], 
+                 marker='s', linestyle='--', color='red')
+
+plt.xlabel("Carrier")
+plt.ylabel("Rank")
+plt.title("Comparison of Rankings: Average Delay vs Weighted Score (Top 4 Highlighted)")
+plt.legend()
+
+
+# Y축 눈금 값을 1이 위로 오도록 설정
+plt.yticks(ticks=ranking_comparison['rank_avg_reversed'], 
+           labels=ranking_comparison['rank_avg'])
+
+plt.show()
+
+```
+
+
+---
+
+
+
+
+
+## HA 항공사 {.scrollable}
+HA 항공사가 급격하게 순위가 올라간 이유가 무엇일까?
+<br>
+
+::: {.panel-tabset}
+
+
+### Tab A
+
+
+
+1. 운항 횟수가 310회로 끝에서 2번째로 낮음 <br>
+```{python}
+a = df['carrier'].value_counts().sort_values(ascending=True)
+print(a)
+```
+
+
+
+<br>
+
+
+### Tab B
+
+
+
+
+
+2. 비행시간이 21시간 이상 지연된 적이 있음 <br>
+
+<!-- ![](https://i.ytimg.com/vi/VAEqmVBKczk/maxresdefault.jpg){fig-width=10px,fig-height=10px} -->
+
+```{python}
+
+b = df.groupby('carrier')['dep_delay'].max().sort_values(ascending=False)
+
+print(b)
+```
+
+![](https://i.ytimg.com/vi/VAEqmVBKczk/maxresdefault.jpg){fig-width=10px,fig-height=10px}
+
+
+
+
+:::
+
+
+---
+
+HA항공사는 한가지 'A330-243' 모델만 사용, 비행 노선도 한가지 <br><br>
+```{python}
+
+print(df.loc[(df['carrier'] == 'HA'),'model'].value_counts())
+
+
+print(df.loc[(df['carrier'] == 'HA'),'distance'].mean())
+
+```
+
+<br><br>
+
+
+---
+
+
+## WN 항공사 {.scrollable}
+
+
+
+
+
+
+
+
+:::: {.columns}
+
+
+::: {.column width="40%"}
+
+모든 항공사 중 <br> 가장 지연 비율이 높음<br> 
+운행 기종도 <br> Boeing 737시리즈로만 운영(중단거리용) <br> 
+
+
+```{python}
+
+df.loc[(df['carrier'] == 'WN'),'model'].value_counts()
+
+```
+
+
+:::
+
+
+
+::: {.column width="60%"}
+
+```{python}
+
+# 항공사별 지연 횟수 (dep_delay > 0인 경우)
+carrier_delay_count = df[df['dep_delay'] > 0].groupby('carrier').size().reset_index(name='delay_count')
+
+
+
+
+# 항공사별 전체 운항 횟수
+carrier_total_count = df.groupby('carrier').size().reset_index(name='total_count')
+
+# 지연비율 계산: (지연 횟수) / (전체 운항 횟수)
+carrier_delay_ratio = carrier_delay_count.merge(carrier_total_count, on='carrier')
+carrier_delay_ratio['delay_ratio'] = carrier_delay_ratio['delay_count'] / carrier_delay_ratio['total_count']
+
+# 정렬 (지연비율 높은 순)
+carrier_delay_ratio = carrier_delay_ratio.sort_values(by='delay_ratio', ascending=False)
+
+
+highlight = ['WN']
+colors = ['blue' if carrier in highlight else 'lightgray' for carrier in carrier_delay_ratio['carrier']]
+
+
+# 그래프 시각화
+plt.figure(figsize=(12, 6))
+
+# barplot에서 개별 색상 적용
+sns.barplot(data=carrier_delay_ratio, x='carrier', y='delay_ratio', palette=colors)
+
+plt.ylabel('Delay Ratio')
+plt.xlabel('Carrier')
+plt.title('Airlines: Delay Ratio by Carrier')
+plt.xticks(rotation=45)
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+plt.show()
+
+
+```
+
+
+:::
+
+::::
+
+---
+
+## FL vs EV 과연 어느 항공사가 더 많이 지연되는걸까? {.scrollable}
+
+```{python}
+
+def highlight_rank(row):
+    if row['rank'] in [2, 6]:  
+        return ['background-color: yellow; font-weight: bold'] * len(row)
+    else:
+        return [''] * len(row)
+
+
+weight_total_score_df.style.apply(highlight_rank, axis=1)
+
+```
+
+---
+
+::: {.center}
+::: {.absolute top=60% left=35% transform="translate(-50%, -50%)" style="background: rgba(255, 255, 255, 0.86); padding: 40px;"}
+**감사합니다**
+:::
+![](./airport2.jpg)
+:::

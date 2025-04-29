@@ -1,0 +1,151 @@
+---
+title: '뉴욕 비행장 데이터 분석'
+author: '8조'
+format: 
+    revealjs:
+        theme: dark
+        reference-location: document
+        footer: 'LS빅데이터스쿨'
+---
+
+# 뉴욕 비행장 데이터를 알아보자!
+
+## 기본 정보 {footer="false"}
+
+-   다음과 같이 비행장 데이터 flights를 불러오도록 하겠습니다.
+
+```{python}
+import numpy as np
+import pandas as pd
+from nycflights13 import flights,planes
+flights.info()
+planes.info()
+
+```
+
+------------------------------------------------------------------------
+
+대쉬 3개를 사용하면 다음 페이지 생성됨.
+
+### 차례로 보여지게 만들기
+
+`::: {.incremental}`로 쌓여진 다음과 같은 아이템의 경우 차례로 보여지게 됩니다다.
+
+::: incremental
+-   1번 아이템
+-   2번 아이템
+-   3번 아이템
+:::
+
+------------------------------------------------------------------------
+
+## 제목
+
+::::: columns
+::: {.column width="20%"}
+왼쪽은 20% 너비를 차지하도록 설정
+:::
+
+::: {.column width="80%"}
+오른쪽은 80% 너비를 차지하도록 설정
+:::
+:::::
+
+## 내용 작게 만들기 {.smaller}
+
+오른쪽은 80% 너비를 차지하도록 설정
+
+::: notes
+말할 내용을 적어봅시다.
+:::
+
+## 스크롤 가능하게 만들기 {.scrollable}
+
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+-   아이템들
+
+## Aside / Footnote효과 테스트
+
+다음은 특정 비행장[^1] 관련 데이터입니다.
+
+[^1]: 애틀랜타 비행장
+
+::: aside
+뉴욕시에는 3개의 비행장이 있음.
+:::
+
+## 코드 하이라이팅
+
+::::: columns
+::: {.column width="50%"}
+``` {.python code-line-numbers="|6|8"}
+#| echo: true
+import numpy as np
+import matplotlib.pyplot as plt
+
+r = np.arange(0, 2, 0.01)
+theta = 2 * np.pi * r
+fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+ax.plot(theta, r)
+ax.set_rticks([0.5, 1, 1.5, 2])
+ax.grid(True)
+plt.show()
+```
+:::
+
+::: {.column width="50%"}
+오른쪽은 50% 너비를 차지하도록 설정
+:::
+:::::
+
+## 인터렉티브 시각화
+
+```{python}
+#| echo: true
+#| output-location: column
+import plotly.express as px
+fig = px.scatter(
+    x=flights['dep_time'].head(),
+    y=flights['arr_delay'].head()
+)
+fig.show()
+
+```
+
+------------------------------------------------------------------------
+
+## tab-set
+
+::: panel-tabset
+### Tab A
+
+Content for `Tab A`
+
+### Tab B
+
+Content for `Tab B`
+:::
+
+------------------------------------------------------------------------
+
+::: panel-sidebar
+### Tab A
+
+Content for `Tab A`
+
+### Tab B
+
+Content for `Tab B`
+:::
+

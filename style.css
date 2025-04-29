@@ -1,0 +1,116 @@
+/* 제목(title)과 부제목(subtitle) 간격 조절 */
+.reveal .title {
+    margin-bottom: 60px !important;  /* 제목과 아래 간격 */
+}
+
+/* 부제목(subtitle)과 아래 본문 간격 */
+.reveal .subtitle {
+    margin-top: 20px !important;
+    margin-bottom: 40px !important;  /* 부제목과 아래 간격 */
+}
+
+.reveal .title {
+    font-size: 120px !important;  /* 제목 크기 */
+    font-weight: bold;
+}
+
+.reveal .title span:first-child {
+    color: #FFD700; /* 첫 번째 줄 색상 (Gold) */
+}
+.reveal .subtitle {
+    font-size: 50px !important;  /* 부제목 크기 */
+    color: #cccccce6;  /* 부제목 색상 (연한 회색) */
+}
+
+.reveal .author {
+    font-size: 32px !important;  /* 부제목 크기 */
+    color: #cccccce6;  /* 부제목 색상 (연한 회색) */
+}
+
+.reveal .footer p {
+    display: inline-block; /* 텍스트 크기에 맞게 배경 적용 */
+    background-color: #ffccd5; /* 연한 분홍색 */
+    color: black; /* 텍스트 색상 */
+    padding: 5px 15px; /* 내부 여백 */
+    border-radius: 8px; /* 둥근 모서리 */
+}
+th {
+    white-space: nowrap;  /* 테이블 헤더 줄바꿈 방지 */
+  }
+
+  table {
+    font-size: 32px;  /* 테이블 전체 글자 크기 */
+  }
+  
+  th, td {
+    padding: 5px;  /* 셀 내부 여백 조정 (선택 사항) */
+  }
+
+  #TOC, .sidebar nav {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+/* 제목(title)과 부제목(subtitle) 간격 조절 */
+.reveal .title {
+    font-family: 'Nanum Gothic', sans-serif !important;
+    margin-bottom: 60px !important;  /* 제목과 아래 간격 */
+}
+
+/* 부제목(subtitle)과 아래 본문 간격 */
+.reveal .subtitle {
+    font-family: 'Nanum Gothic', sans-serif !important;
+    margin-top: 20px !important;
+    margin-bottom: 40px !important;  /* 부제목과 아래 간격 */
+}
+
+
+
+/* 제목(title)에 그림자 추가 */
+.reveal .title {
+    font-family: 'Nanum Gothic', sans-serif !important;
+    font-size: 100px !important;  /* 제목 크기 */
+    font-weight: bold;
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5); /* 가로 3px, 세로 3px, 흐림 정도 5px, 검은색 반투명 */
+}
+
+/* 부제목(subtitle)에 그림자 추가 */
+.reveal .subtitle {
+    font-family: 'Nanum Gothic', sans-serif !important;
+    font-size: 50px !important;  /* 부제목 크기 */
+    color: #cccccce6;  /* 부제목 색상 (연한 회색) */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* 가로 2px, 세로 2px, 흐림 정도 4px, 검은색 반투명 */
+}
+
+
+/* 푸터 스타일 수정 */
+.reveal .footer p{
+    color: #FFFFFF !important;  /* 흰색 글자 */
+    display: inline;
+    font-size: 14px !important;  /* 글자 크기 */
+}
+
+
+
+
+
+
+/* 스타일 적용 */
+
+h2 {
+    color: rgb(6, 6, 16); /* 파란색 */
+    font-family: 'Nanum Gothic', sans-serif !important; /* 원하는 폰트 */
+    font-weight: bold; /* 굵은 글씨 */
+    border-bottom: 2px solid #090336; /* 하단 줄 추가 */
+    padding-bottom: 5px; /* 하단 여백 */
+}
+
+h3::before {
+    content: "| ";
+    color: #3c3c3e; /* 바 색상 (파란색) */
+    font-weight: bold;
+    margin-right: 8px;
+}
